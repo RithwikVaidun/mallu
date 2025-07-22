@@ -1,12 +1,36 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useApi, useApiMutation } from '@/hooks/useApi';
+import { CreatePostRequest, Post } from '@/types/api';
 
 export default function HomeScreen() {
+  const [showExample, setShowExample] = useState(false);
+  
+  // Example: Fetch posts from backend
+  const { data: posts, loading, error, refetch } = useApi<Post[]>('/posts', showExample);
+  
+  // Example: Create a new post
+  const { mutate: createPost, loading: creating } = useApiMutation<Post, CreatePostRequest>();
+
+  const handleCreatePost = async () => {
+    try {
+      await createPost('/posts', {
+        title: 'Test Post',
+        content: 'This is a test post created from the mobile app!'
+      });
+      // Refresh the posts list after creating
+      refetch();
+    } catch (error) {
+      console.error('Failed to create post:', error);
+    }
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -20,19 +44,68 @@ export default function HomeScreen() {
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
       </ThemedView>
+      
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
+        <ThemedText type="subtitle">Backend Integration Demo</ThemedText>
         <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
+          Your app is now ready to connect to a backend! The API service is configured and ready to use.
+        </ThemedText>
+        
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => setShowExample(!showExample)}
+        >
+          <ThemedText style={styles.buttonText}>
+            {showExample ? 'Hide' : 'Show'} API Example
+          </ThemedText>
+        </TouchableOpacity>
+
+        {showExample && (
+          <ThemedView style={styles.apiExample}>
+            <ThemedText type="subtitle">Posts from Backend:</ThemedText>
+            
+            {loading && <ActivityIndicator size="small" />}
+            
+            {error && (
+              <ThemedText style={styles.errorText}>
+                Error: {error}
+              </ThemedText>
+            )}
+            
+            {posts && (
+              <ThemedView>
+                {posts.length > 0 ? (
+                  posts.map((post) => (
+                    <ThemedView key={post.id} style={styles.postItem}>
+                      <ThemedText type="defaultSemiBold">{post.title}</ThemedText>
+                      <ThemedText>{post.content}</ThemedText>
+                    </ThemedView>
+                  ))
+                ) : (
+                  <ThemedText>No posts found. Create one below!</ThemedText>
+                )}
+              </ThemedView>
+            )}
+
+            <TouchableOpacity 
+              style={[styles.button, { marginTop: 10 }]} 
+              onPress={handleCreatePost}
+              disabled={creating}
+            >
+              <ThemedText style={styles.buttonText}>
+                {creating ? 'Creating...' : 'Create Test Post'}
+              </ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
+        )}
+      </ThemedView>
+
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Next Steps</ThemedText>
+        <ThemedText>
+          1. Set up a backend server (see backend examples below){'\n'}
+          2. Update the API_BASE_URL in services/api.ts{'\n'}
+          3. Start making API calls using the useApi hook
         </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
@@ -71,5 +144,32 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  apiExample: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+  },
+  errorText: {
+    color: '#FF3B30',
+    marginVertical: 8,
+  },
+  postItem: {
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 6,
+    marginVertical: 4,
   },
 });
